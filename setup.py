@@ -58,7 +58,7 @@ def version_record(flag:str, major_inc:int=0, minor_inc:int=0, patch_inc:int=1, 
 def get_package_requirements():
     cprint('getting requirements ...', 'yellow')
     with open('dh_backtest/requirements.txt', 'r') as f:
-        lines = [line.strip() for line in f.readlines()]
+        lines = [line.strip().replace('==', '>=') for line in f.readlines()]
         f.close()
     return lines
 
