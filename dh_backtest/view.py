@@ -1,5 +1,6 @@
 from typing import List
 import pandas as pd
+import dash
 from dash import Dash, html, dcc, Output, Input, State, dash_table
 from dash.exceptions import PreventUpdate
 from model import get_bt_result_file_name, read_csv_with_metadata
@@ -39,17 +40,17 @@ def plot_app(df_list: List[pd.DataFrame]):
 
         df_performance.loc[df.attrs['ref_tag']] = [
             df.attrs['ref_tag'],
-            f"{df.attrs['performace_report']['number_of_trades']:,.0f}",
-            f"{df.attrs['performace_report']['win_rate']:.2%}",
-            f"{df.attrs['performace_report']['total_cost']:,.2f}",
-            f"{df.attrs['performace_report']['pnl_trading']:,.2f}",
-            f"{df.attrs['performace_report']['roi_trading']:,.2%}",
-            f"{df.attrs['performace_report']['mdd_pct_trading']:,.2%}",
-            f"{df.attrs['performace_report']['mdd_dollar_trading']:,.2f}",
-            f"{df.attrs['performace_report']['pnl_bah']:,.2f}",
-            f"{df.attrs['performace_report']['roi_bah']:,.2%}",
-            f"{df.attrs['performace_report']['mdd_pct_bah']:,.2%}",
-            f"{df.attrs['performace_report']['mdd_dollar_bah']:,.2f}",
+            df.attrs['performace_report']['number_of_trades'],
+            df.attrs['performace_report']['win_rate'],
+            df.attrs['performace_report']['total_cost'],
+            df.attrs['performace_report']['pnl_trading'],
+            df.attrs['performace_report']['roi_trading'],
+            df.attrs['performace_report']['mdd_pct_trading'],
+            df.attrs['performace_report']['mdd_dollar_trading'],
+            df.attrs['performace_report']['pnl_bah'],
+            df.attrs['performace_report']['roi_bah'],
+            df.attrs['performace_report']['mdd_pct_bah'],
+            df.attrs['performace_report']['mdd_dollar_bah']
         ]
 
 
@@ -63,6 +64,10 @@ def plot_app(df_list: List[pd.DataFrame]):
     
 
     app = Dash()
+
+    money       = dash_table.FormatTemplate.money(2)
+    percentage  = dash_table.FormatTemplate.percentage(2)
+
     app.layout = [
         html.Div(
             id="header", 
@@ -72,7 +77,7 @@ def plot_app(df_list: List[pd.DataFrame]):
         ),
         html.Div(
             id='body',
-            style={'width': '100%', 'border': '1px solid blue'},
+            style={'width': '100%', 'border': '1px solid blue', 'display': 'flex', 'justify-content': 'space-around'},
             children=[
                 dcc.Store(id='current_ref', data=''),
                 html.Div(
@@ -83,16 +88,28 @@ def plot_app(df_list: List[pd.DataFrame]):
                     ]
                 ),
                 html.Div(
-                    style={'display': 'inline-block', 'width': '40%', 
+                    style={'display': 'inline-block', 'width': '30%', 
                         #    'border': '1px solid black', 
                            'margin': 'auto'},
                     children = [
                         dash_table.DataTable(
                             id='bt_result_table',
                             data=df_performance[['ref_tag', 'pnl_trading', 'roi_trading', 'mdd_pct_trading']].to_dict('records'),
-                            sort_action='native',
+                            columns=[
+                                {'name': 'Reference', 'id': 'ref_tag'},
+                                {'name': 'PnL Trading', 'id': 'pnl_trading', 'type': 'numeric', 'format': money},
+                                {'name': 'ROI Trading', 'id': 'roi_trading', 'type': 'numeric', 'format': percentage},
+                                {'name': 'MDD Trading', 'id': 'mdd_pct_trading', 'type': 'numeric', 'format': percentage},
+                            ],
                             sort_by=[{'column_id': 'roi_trading', 'direction': 'desc'}],
+                            sort_action='native',
                             style_cell={'textAlign': 'left'},
+                            style_cell_conditional=[
+                                {'if': {'column_id': 'pnl_trading'}, 'textAlign': 'right'},
+                                {'if': {'column_id': 'roi_trading'}, 'textAlign': 'right'},
+                                {'if': {'column_id': 'mdd_pct_trading'}, 'textAlign': 'right'},
+
+                            ],
                             style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
                             page_size=10,
                         ),
@@ -112,18 +129,49 @@ def plot_app(df_list: List[pd.DataFrame]):
         )
     ]
 
+
+    @app.callback(
+        Output('bt_result_table', 'data'),
+        [Input('bt_result_table', 'sort_by')],
+        State('bt_result_table', 'data')
+    )
+    def update_table_data(sort_by, tableData):
+        if not sort_by:
+            raise PreventUpdate
+
+        df = pd.DataFrame(tableData)
+        for sort in sort_by:
+            df = df.sort_values(by=sort['column_id'], ascending=(sort['direction'] == 'asc'))
+
+        return df.to_dict('records')
+
     # update state of current reference
     @app.callback(
         Output('current_ref', 'data'),
-        Input('all_equity_curve', 'clickData')
+        [Input('all_equity_curve', 'clickData'), Input('bt_result_table', 'active_cell'),],
+        State('bt_result_table', 'data')
     )
-    def update_current_ref_1(clickData):
-        if clickData is None:
+    def update_current_ref(clickData, active_cell, tableData):
+
+        ctx = dash.callback_context
+        if not ctx.triggered:
             raise PreventUpdate
-        else:
+        
+        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        print(f'trigger_id: {trigger_id}')
+
+        if trigger_id == 'all_equity_curve' and clickData:
             ref_tag = clickData['points'][0]['customdata']
             print(f'current ref: {ref_tag}, type: {type(ref_tag)}')
             return ref_tag
+        
+        if trigger_id == 'bt_result_table' and active_cell:
+            print(f'active_cell: {active_cell}')
+            print(f'tableData: {tableData}')
+            ref_tag = tableData[active_cell['row']]['ref_tag']
+            print(f'current ref: {ref_tag}, type: {type(ref_tag)}')
+            return ref_tag
+    
     
     # consquence of updating the current reference state
     @app.callback(
@@ -170,11 +218,11 @@ def plot_app(df_list: List[pd.DataFrame]):
             {
                 'Reference':['Number of Trades', 'Win Rate', 'Total Cost', 'PnL Trading', 'ROI Trading'],
                 current_ref:[
-                    df_performance.loc[current_ref]['number_of_trades'],
-                    df_performance.loc[current_ref]['win_rate'],
-                    df_performance.loc[current_ref]['total_cost'],
-                    df_performance.loc[current_ref]['pnl_trading'],
-                    df_performance.loc[current_ref]['roi_trading'],
+                    f'{df_performance.loc[current_ref]["number_of_trades"]:,}',
+                    f'{df_performance.loc[current_ref]["win_rate"]:.2%}',
+                    f'{df_performance.loc[current_ref]["total_cost"]:,.2f}',
+                    f'{df_performance.loc[current_ref]["pnl_trading"]:,.2f}',
+                    f'{df_performance.loc[current_ref]["roi_trading"]:.2%}',
                 ]
             },
         )
@@ -182,16 +230,16 @@ def plot_app(df_list: List[pd.DataFrame]):
             {
                 'Metrics':['Profit/Loss', 'Return on Investment', 'MDD Dollar', 'MDD Percentage' ],
                 'Trading':[
-                    df_performance.loc[current_ref]['pnl_trading'],
-                    df_performance.loc[current_ref]['roi_trading'],
-                    df_performance.loc[current_ref]['mdd_dollar_trading'],
-                    df_performance.loc[current_ref]['mdd_pct_trading'],
+                    f'{df_performance.loc[current_ref]["pnl_trading"]:,.2f}',
+                    f'{df_performance.loc[current_ref]["roi_trading"]:.2%}',
+                    f'{df_performance.loc[current_ref]["mdd_dollar_trading"]:,.2f}',
+                    f'{df_performance.loc[current_ref]["mdd_pct_trading"]:.2%}',
                 ],
                 'Buy & Hold':[
-                    df_performance.loc[current_ref]['pnl_bah'],
-                    df_performance.loc[current_ref]['roi_bah'],
-                    df_performance.loc[current_ref]['mdd_dollar_bah'],
-                    df_performance.loc[current_ref]['mdd_pct_bah'],
+                    f'{df_performance.loc[current_ref]["pnl_bah"]:,.2f}',
+                    f'{df_performance.loc[current_ref]["roi_bah"]:.2%}',
+                    f'{df_performance.loc[current_ref]["mdd_dollar_bah"]:,.2f}',
+                    f'{df_performance.loc[current_ref]["mdd_pct_bah"]:.2%}',
                 ]
             },
         )
@@ -199,37 +247,18 @@ def plot_app(df_list: List[pd.DataFrame]):
         table1 = dash_table.DataTable(
             data=df_table1.to_dict('records'),
             style_cell={'textAlign': 'left'},
-            style_cell_conditional=[
-                {
-                    'if': {'column_id': current_ref},
-                    'textAlign': 'right'
-                }
+            style_data_conditional=[
+                {'if': {'column_id': current_ref}, 'textAlign': 'right'},
             ],
             style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold', 'lineHeight': '1px'},
-            css=[{
-                'selector': 'thead',
-                'rule': 'display: none'
-            }]
         )
         table2 = dash_table.DataTable(
             data=df_table2.to_dict('records'),
             style_cell={'textAlign': 'left'},
             style_cell_conditional=[
-                {
-                    'if': {'column_id': 'Metrics'},
-                    'fontWeight': 'bold',
-                    'textAlign': 'left'
-                },
-                {
-                    'if': {'column_id': 'Trading'},
-                    'backgroundColor': 'lightblue',
-                    'textAlign': 'right'
-                },
-                {
-                    'if': {'column_id': 'Buy & Hold'},
-                    'backgroundColor': 'lightgreen',
-                    'textAlign': 'right'
-                }
+                {'if': {'column_id': 'Metrics'}, 'fontWeight': 'bold', 'textAlign': 'left'},
+                {'if': {'column_id': 'Trading'}, 'backgroundColor': 'lightblue', 'textAlign': 'right'},
+                {'if': {'column_id': 'Buy & Hold'}, 'backgroundColor': 'lightgreen', 'textAlign': 'right'}
             ],
             style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold', 'lineHeight': '1px'},
         )
