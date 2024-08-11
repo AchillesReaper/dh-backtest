@@ -5,6 +5,7 @@ Currently, only IB data source is supported.
 import json
 import os
 import sys
+from typing import List
 from termcolor import cprint
 
 from datetime import datetime
@@ -215,7 +216,7 @@ def get_risk_free_rate(start_date):
 
 ##### ***** Get & Set local Data ***** #####
 
-def to_csv_with_metadata(df:pd.DataFrame, folder:str, file_name:str):
+def to_csv_with_metadata(df:pd.DataFrame, file_name:str, folder:str = 'data/backtest'):
     if not os.path.exists(folder): os.makedirs(folder)
     path_name = f'{folder}/{file_name}'
     df.to_csv(f'{path_name}.csv', index=True)
@@ -226,13 +227,19 @@ def to_csv_with_metadata(df:pd.DataFrame, folder:str, file_name:str):
     cprint(f'Metadata saved to {path_name}.json', 'green')
 
 
-def read_csv_with_metadata(path_name:str):
+def read_csv_with_metadata(file_name:str, folder:str = 'data/backtest') -> pd.DataFrame:
+    path_name = f'{folder}/{file_name}'
     df = pd.read_csv(f'{path_name}.csv', index_col=0)
     with open(f'{path_name}.json', 'r') as f:
         df.attrs = json.load(f)
         f.close()
     return df
 
+def get_bt_result_file_name(test_name) -> List[str]:
+    folder_path = 'data/backtest'
+    file_names = os.listdir(folder_path)
+    file_names = list(set(f.split('.')[0] for f in file_names if test_name in f))
+    return file_names
 
 if __name__ == "__main__":
-    get_risk_free_rate("2021-01-01")
+    get_bt_result_file_name('30mins')
