@@ -6,6 +6,7 @@ from dash.exceptions import PreventUpdate
 from model import get_bt_result_file_name, read_csv_with_metadata
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
+from termcolor import cprint
 
 df_performance  = ''
 df_para         = ''
@@ -14,9 +15,12 @@ df_para         = ''
 def plot_app(df_list: List[pd.DataFrame]):
     fig = go.Figure()
     global df_performance
-    global df_para
     df_performance = pd.DataFrame(columns=['ref_tag', 'number_of_trades', 'win_rate', 'total_cost', 'pnl_trading', 'roi_trading', 'mdd_pct_trading', 'mdd_dollar_trading', 'pnl_bah', 'roi_bah', 'mdd_pct_bah', 'mdd_dollar_bah'])
     
+    global df_para
+    df_para_columns = ['ref_tag'] + (list(df_list[0].attrs['para_comb'].keys()))
+    df_para = pd.DataFrame(columns=df_para_columns)
+
     for df in df_list:
         fig.add_trace(go.Scatter(
             x       = df['datetime'], 
@@ -53,6 +57,7 @@ def plot_app(df_list: List[pd.DataFrame]):
             df.attrs['performace_report']['mdd_dollar_bah']
         ]
 
+        df_para.loc[df.attrs['ref_tag']] = [df.attrs['ref_tag']] + list(df.attrs['para_comb'].values())
 
 
     fig.update_layout(
@@ -67,67 +72,79 @@ def plot_app(df_list: List[pd.DataFrame]):
 
     money       = dash_table.FormatTemplate.money(2)
     percentage  = dash_table.FormatTemplate.percentage(2)
+    style_body_sub_div = {'display': 'inline-block', 'width': '35%', 'margin-top': '10px','margin-left': 'auto', 'margin-right': 'auto'}
 
-    app.layout = [
-        html.Div(
-            id="header", 
-            className='row', 
-            children='Backtest Result',
-            style={'textAlign': 'center', 'fontSize': 30, 'fontfamily': 'Arial', 'margin': 'auto', 'padding': '10px'}
-        ),
-        html.Div(
-            id='body',
-            style={'width': '100%', 'border': '1px solid blue', 'display': 'flex', 'justify-content': 'space-around'},
-            children=[
-                dcc.Store(id='current_ref', data=''),
-                html.Div(
-                    id='graph-area',
-                    style={'display': 'inline-block', 'width': '60%', 'margin': 'auto'},
-                    children = [
-                        dcc.Graph(figure=fig, id='all_equity_curve'),
-                    ]
-                ),
-                html.Div(
-                    style={'display': 'inline-block', 'width': '30%', 
-                        #    'border': '1px solid black', 
-                           'margin': 'auto'},
-                    children = [
-                        dash_table.DataTable(
-                            id='bt_result_table',
-                            data=df_performance[['ref_tag', 'pnl_trading', 'roi_trading', 'mdd_pct_trading']].to_dict('records'),
-                            columns=[
-                                {'name': 'Reference', 'id': 'ref_tag'},
-                                {'name': 'PnL Trading', 'id': 'pnl_trading', 'type': 'numeric', 'format': money},
-                                {'name': 'ROI Trading', 'id': 'roi_trading', 'type': 'numeric', 'format': percentage},
-                                {'name': 'MDD Trading', 'id': 'mdd_pct_trading', 'type': 'numeric', 'format': percentage},
-                            ],
-                            sort_by=[{'column_id': 'roi_trading', 'direction': 'desc'}],
-                            sort_action='native',
-                            style_cell={'textAlign': 'left'},
-                            style_cell_conditional=[
-                                {'if': {'column_id': 'pnl_trading'}, 'textAlign': 'right'},
-                                {'if': {'column_id': 'roi_trading'}, 'textAlign': 'right'},
-                                {'if': {'column_id': 'mdd_pct_trading'}, 'textAlign': 'right'},
+    app.layout = html.Div(
+        style    = {'backgroundColor': '#D0B8A8'},
+        children = [
+            html.Div(
+                id          ="header", 
+                className   ='row', 
+                children    ='Backtest Result',
+                style       ={'height': '5vh','textAlign': 'center', 'fontSize': 30, 'fontfamily': 'Arial', 'margin': 'auto', 'padding': '10px'}
+            ),
+            html.Div(
+                id      ='body',
+                style   ={'backgroundColor': '#DFD3C3', 'height': '90vh','width': '100%', 'border': '1px solid blue', 'display': 'flex', 'justify-content': 'space-around'},
+                children=[
+                    dcc.Store(id='current_ref', data=''),
+                    html.Div(
+                        id      ='graph-area',
+                        style = {**style_body_sub_div, 'width': '60%'},
+                        children= [
+                            dcc.Graph(id='all_equity_curve', figure=fig, style={'backgroundColor': '#F8EDE3'}),
+                        ]
+                    ),
+                    html.Div(
+                        style={**style_body_sub_div, 'width': '35%'},
+                        children = [
+                            html.Div(
+                                style={'width': '100%', 'border': '1px solid red'},
+                                children = [
+                                    dash_table.DataTable(
+                                        id='bt_result_table',
+                                        data=df_performance[['ref_tag', 'pnl_trading', 'roi_trading', 'mdd_pct_trading']].to_dict('records'),
+                                        columns=[
+                                            {'name': 'Backtest Reference', 'id': 'ref_tag'},
+                                            {'name': 'Profit/Loss', 'id': 'pnl_trading', 'type': 'numeric', 'format': money},
+                                            {'name': 'ROI', 'id': 'roi_trading', 'type': 'numeric', 'format': percentage},
+                                            {'name': 'MDD', 'id': 'mdd_pct_trading', 'type': 'numeric', 'format': percentage},
+                                        ],
+                                        sort_by=[{'column_id': 'roi_trading', 'direction': 'desc'}],
+                                        sort_action='native',
+                                        style_cell={'textAlign': 'left'},
+                                        style_cell_conditional=[
+                                            {'if': {'column_id': 'pnl_trading'}, 'textAlign': 'right'},
+                                            {'if': {'column_id': 'roi_trading'}, 'textAlign': 'right'},
+                                            {'if': {'column_id': 'mdd_pct_trading'}, 'textAlign': 'right'},
 
-                            ],
-                            style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
-                            page_size=10,
-                        ),
-                        html.Div(
-                            id='performance_table',
-                            style={'width': '100%', 'border': '1px solid red'},
-                            children='Backtest Result Table'
-                        )
-                    ]
-                ),
-            ]
-        ),
-        html.Div(
-            id='footer',
-            style={'width': '100%'},
-            children='Footer'
-        )
-    ]
+                                        ],
+                                        style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+                                        page_size=8,
+                                    )
+                                ]
+                            ),
+                            html.Div(
+                                id='performance_table',
+                                style={'width': '100%', 'border': '1px solid red'},
+                                children=[]
+                            ),
+                            html.Div(
+                                id='para_table',
+                                style={'width': '100%', 'border': '1px solid blue'},
+                                children=[]
+                            )
+                        ]
+                    ),
+                ]
+            ),
+            html.Div(
+                id='footer',
+                style={'width': '100%'},
+                children='Footer'
+            )
+        ]
+    )
 
 
     @app.callback(
@@ -158,18 +175,13 @@ def plot_app(df_list: List[pd.DataFrame]):
             raise PreventUpdate
         
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        print(f'trigger_id: {trigger_id}')
 
         if trigger_id == 'all_equity_curve' and clickData:
             ref_tag = clickData['points'][0]['customdata']
-            print(f'current ref: {ref_tag}, type: {type(ref_tag)}')
             return ref_tag
         
         if trigger_id == 'bt_result_table' and active_cell:
-            print(f'active_cell: {active_cell}')
-            print(f'tableData: {tableData}')
             ref_tag = tableData[active_cell['row']]['ref_tag']
-            print(f'current ref: {ref_tag}, type: {type(ref_tag)}')
             return ref_tag
     
     
@@ -185,8 +197,10 @@ def plot_app(df_list: List[pd.DataFrame]):
         for trace in figure['data']:
             if trace['customdata'][0] == current_ref:
                 trace['line']['width'] = 5
+                trace['opacity'] = 1
             else:
                 trace['line']['width'] = 2
+                trace['opacity'] = 0.7
         return figure
 
     @app.callback(
@@ -247,10 +261,10 @@ def plot_app(df_list: List[pd.DataFrame]):
         table1 = dash_table.DataTable(
             data=df_table1.to_dict('records'),
             style_cell={'textAlign': 'left'},
-            style_data_conditional=[
+            style_cell_conditional=[
                 {'if': {'column_id': current_ref}, 'textAlign': 'right'},
             ],
-            style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold', 'lineHeight': '1px'},
+            style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
         )
         table2 = dash_table.DataTable(
             data=df_table2.to_dict('records'),
@@ -260,9 +274,38 @@ def plot_app(df_list: List[pd.DataFrame]):
                 {'if': {'column_id': 'Trading'}, 'backgroundColor': 'lightblue', 'textAlign': 'right'},
                 {'if': {'column_id': 'Buy & Hold'}, 'backgroundColor': 'lightgreen', 'textAlign': 'right'}
             ],
-            style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold', 'lineHeight': '1px'},
+            style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
         )
         return [table1, table2]
+
+
+    @app.callback(
+        Output('para_table', 'children'),
+        Input('current_ref', 'data'),
+        State('para_table', 'children')
+    )
+    def show_parameters(current_ref, data):
+        if not current_ref:
+            raise PreventUpdate
+        
+        global df_para
+        df_table = pd.DataFrame(
+            {
+                'para_name': df_para.columns[1:],
+                'para_value': df_para.loc[current_ref][1:]
+            }
+        )
+        table = dash_table.DataTable(
+            data=df_table.to_dict('records'),
+            style_cell={'textAlign': 'left'},
+            style_cell_conditional=[
+                {'if': {'column_id': 'para_name'}, 'textAlign': 'left', 'fontWeight': 'bold'},
+                {'if': {'column_id': 'para_value'}, 'textAlign': 'right'},
+            ],
+            style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+        )
+        return [table]
+
 
     app.run(debug=True)
     pass
