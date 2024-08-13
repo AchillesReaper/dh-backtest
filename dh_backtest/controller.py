@@ -6,8 +6,9 @@ import sys
 from typing import Callable, List
 from termcolor import cprint
 import pandas as pd
-from model import get_hist_data_ib, to_csv_with_metadata
+from model import get_hist_data_ib, read_csv_with_metadata, to_csv_with_metadata
 from classes import FutureTradingAccount
+from view import plot_app
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
@@ -169,12 +170,20 @@ def run_backtest(df_hist_data:pd.DataFrame, ref_tag:str, para_comb:dict, generat
         'para_comb': para_comb,
         'performace_report': generate_bt_report(df_backtest_result),
     }
-    to_csv_with_metadata(df_backtest_result, 'data/backtest', ref_tag)
+    to_csv_with_metadata(df=df_backtest_result, file_name=ref_tag)
     return df_backtest_result
 
 
 def read_backtest_result(file_name:str) -> List[pd.DataFrame]:
-    pass
+    '''Read the backtest results from the csv files in folder "data/backtest".'''
+    backtest_results = []
+    file_list = list(set(file_n.split('.')[0] for file_n in os.listdir('data/backtest')))
+    for file in file_list:
+        if file_name in file:
+            cprint(f'Reading backtest result from: {file} ......', 'yellow')
+            backtest_results.append(read_csv_with_metadata(file))
+    return backtest_results
+
 
 
 def main_controller(is_update_data:bool, is_rerun_backtest:bool, datasource:str, underlying:dict, para_dict:dict, generate_signal:Callable, action_on_signal:Callable):
@@ -198,12 +207,11 @@ def main_controller(is_update_data:bool, is_rerun_backtest:bool, datasource:str,
         print(f"Running backtest with processors of: {num_processors}")
         with multiprocessing.Pool(num_processors) as pool:
             backtest_results = pool.starmap(run_backtest, [(df_hist_data, ref_tag, para_comb, generate_signal, action_on_signal) for ref_tag, para_comb in para_comb_dict.items()])
-        # for ref_tag, para_comb in para_comb_dict.items():
-        #     backtest_results.append(run_backtest(df_hist_data, ref_tag, para_comb, generate_signal, action_on_signal))
     else:
         backtest_results = read_backtest_result(file_name)
 
-    print(backtest_results[0].attrs)
     # visualize the backtest results
+    cprint('plotting the backtest results......', 'green')
+    plot_app(backtest_results)
 
-
+    

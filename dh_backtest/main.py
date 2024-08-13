@@ -146,7 +146,7 @@ def action_on_signal(df, para_comb) -> pd.DataFrame:
 
 if __name__ == "__main__":
     is_update_data         = False     #Only set true if you want to update the historical data or running the backtest for the first time
-    is_rerun_backtest      = True     #Only set true if you want to run the backtest again. Set False will use the existing backtest result for visualization.
+    is_rerun_backtest      = False     #Only set true if you want to run the backtest again. Set False will use the existing backtest result for visualization.
 
     datasource          = DataSources.IB      #Choose the data source to get historical data. Current available sources are: 'IB', 'Futu', 'hkfdb'    
     underlying = {

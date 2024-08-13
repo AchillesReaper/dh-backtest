@@ -167,9 +167,6 @@ def combine_spot_iter_ib_data(iter_df_list, start_date:str, end_date:str):
         else:
             df = df._append(iter_df_list[i])
     
-    # file_path = f'data_bt_mp/HSI_{start_date}_{end_date}_30mins.csv'   
-    # df.to_csv(file_path)
-    # cprint(f'Combined spot data saved to {file_path}', 'green')
     return df
 
 
