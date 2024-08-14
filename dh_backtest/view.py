@@ -38,6 +38,7 @@ def plot_detail(df_bt_result:pd.DataFrame):
             mode    ='lines',
             name    ='Equity',
             line    =dict(color='green', width=2),
+            customdata = [df_bt_result.attrs['ref_tag']] * len(df_bt_result),
         ),
         secondary_y=True,
     )
@@ -58,6 +59,7 @@ def plot_detail(df_bt_result:pd.DataFrame):
                 + action_buy_df['t_size'].astype(str) + '@' + action_buy_df['t_price'].astype(str) 
                 + ' (signal: ' + action_buy_df['signal'] + ')',
             hoverinfo='text',
+            customdata = [df_bt_result.attrs['ref_tag']] * len(df_bt_result),
         ),
         secondary_y=False,
     )
@@ -78,6 +80,7 @@ def plot_detail(df_bt_result:pd.DataFrame):
                 + action_sell_df['t_size'].astype(str) + '@' + action_sell_df['t_price'].astype(str) 
                 + ' (signal: ' + action_sell_df['signal'] + ')',
             hoverinfo='text',
+            customdata = [df_bt_result.attrs['ref_tag']] * len(df_bt_result),
         ),
         secondary_y=False,
     )
@@ -98,6 +101,7 @@ def plot_detail(df_bt_result:pd.DataFrame):
                 + action_close_df['t_size'].astype(str) + '@' + action_close_df['t_price'].astype(str) 
                 + ' (' + action_close_df['logic'] + ', P/L: ' + action_close_df['pnl_action'].astype(str) + ')',
             hoverinfo='text',
+            customdata = [df_bt_result.attrs['ref_tag']] * len(df_bt_result),
         ),
         secondary_y=False,
     )
