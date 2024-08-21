@@ -4,12 +4,13 @@ import dash
 from dash import Dash, html, dcc, Output, Input, State, dash_table
 import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
-from model import get_bt_result_file_name, read_csv_with_metadata
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from termcolor import cprint
-from css import style_root_div, style_header, style_body, style_body_sub_div, style_element
-from plotly.subplots import make_subplots
+# local modules
+# from views.css import style_root_div, style_header, style_body, style_body_sub_div, style_element
+from dh_backtest.views.css import style_root_div, style_header, style_body, style_body_sub_div, style_element
+
 
 df_bt_result_list = []
 df_performance  = ''
@@ -427,12 +428,9 @@ def plot_app(df_list: List[pd.DataFrame]):
 
         return figure, style_data_conditional, [table1, table2], para_table
 
-    app.run(debug=True)
+    app.run(debug=False)
 
 
-if __name__ == "__main__":
-    bt_result_file_names = get_bt_result_file_name('HSI')
-    df_bt_result_list = [read_csv_with_metadata(file_name) for file_name in bt_result_file_names]
-    plot_app(df_bt_result_list)
+
 
 

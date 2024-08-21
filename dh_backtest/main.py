@@ -4,8 +4,9 @@ This is a template for how to make use of this package to run backtest on a stra
 import numpy as np
 import pandas as pd
 from termcolor import cprint
-from dh_backtest.classes import DataSources, IBBarSize, FutureTradingAccount
-from dh_backtest.controller import init_trading, main_controller
+from models.data_classes import Underlying, IBBarSize, FutureTradingAccount
+from models.remote_data import get_spot_future_ib
+from backtest_engine import BacktestEngine
 
 
 def generate_signal(df:pd.DataFrame, para_comb:dict) -> pd.DataFrame:
@@ -45,7 +46,7 @@ def generate_signal(df:pd.DataFrame, para_comb:dict) -> pd.DataFrame:
     return df
 
 
-def action_on_signal(df, para_comb) -> pd.DataFrame:
+def action_on_signal(df, para_comb, trade_account) -> pd.DataFrame:
     '''
     this is custom function for traders to determine what to do with their custome signal.
     return the input dataframe with extra column ['action', 'logic', 't_price', 't_size', 'commission', 'pnl_action' 'acc_columns'].
@@ -57,8 +58,7 @@ def action_on_signal(df, para_comb) -> pd.DataFrame:
     pnl_action is the realized profit and loss due to the action.
     acc_columns is the columns recording the changes of the trading account.
     '''
-    my_acc = FutureTradingAccount(150_000)
-    df = init_trading(my_acc, df)
+    my_acc = trade_account
 
     for index, row in df.iterrows():
         # step 1: determine if it is time to open position
@@ -145,31 +145,31 @@ def action_on_signal(df, para_comb) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    is_update_data         = False     #Only set true if you want to update the historical data or running the backtest for the first time
-    is_rerun_backtest      = False     #Only set true if you want to run the backtest again. Set False will use the existing backtest result for visualization.
-
-    datasource          = DataSources.IB      #Choose the data source to get historical data. Current available sources are: 'IB', 'Futu', 'hkfdb'    
-    underlying = {
-        'symbol'            : 'HSI',
-        'exchange'          : 'HKFE',
-        'contract_type'     : 'FUT',
-        'start_date'        : '2023-01-01',
-        'end_date'          : '2024-07-31',
-        'rolling_days'      : 4,
-        'barSizeSetting'    : IBBarSize.MIN_30,
-    }
+    underlying = Underlying(
+        symbol='HSI',
+        exchange='HKFE',
+        contract_type='FUT',
+        barSizeSetting=IBBarSize.DAY_1,
+        start_date='2023-12-01',
+        end_date='2024-03-31',
+    )
 
     para_dict = {
         'stop_loss'         : [20, 30],
-        'target_profit'     : [60, 80, 100],
+        'target_profit'     : [60, 80],
     }
 
-    main_controller(
-        is_update_data      = is_update_data, 
-        is_rerun_backtest   = is_rerun_backtest, 
-        datasource          = datasource, 
-        underlying          = underlying, 
-        para_dict           = para_dict,
-        generate_signal     = generate_signal,
-        action_on_signal    = action_on_signal,
+    engine = BacktestEngine(
+        is_update_data      =False,
+        is_rerun_backtest   =True,
+        underlying          =underlying,
+        para_dict           =para_dict,
+        trade_account       =FutureTradingAccount(150_000),
+        generate_signal     =generate_signal,
+        action_on_signal    =action_on_signal,
+        get_data_from_api   =get_spot_future_ib,
+        folder_path         ='data/backtest',
     )
+
+    engine.run_engine()
+

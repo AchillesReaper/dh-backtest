@@ -1,12 +1,19 @@
-import sys
 import numpy as np
+import sys
 from termcolor import cprint
 
-class DataSources():
-    '''Data sources for historical data. Currently support IB, Futu, hkfdb'''
-    IB = 'IB'
-    CSV = 'CSV'
-    SQL = 'SQL'
+class Underlying():
+    def __init__(self, symbol:str, exchange:str, contract_type:str, barSizeSetting:str,start_date:str, end_date:str,  durationStr='2 M', rolling_days:int=4, timeZone:str="Asia/Hong_Kong"):
+        self.symbol             = symbol
+        self.exchange           = exchange
+        self.contract_type      = contract_type
+        self.barSizeSetting     = barSizeSetting
+        self.start_date         = start_date        # 'YYYY-MM-DD' -> '2023-01-01'
+        self.end_date           = end_date          # 'YYYY-MM-DD' -> '2023-07-31'
+        self.durationStr        = durationStr
+        self.rolling_days       = rolling_days
+        self.timeZone           = timeZone
+
 
 class IBBarSize():
     SEC_1 = '1 secs'
@@ -105,4 +112,3 @@ class FutureTradingAccount():
         self.mark_to_market(t_price)
         return commission, pnl_realized
         
-    

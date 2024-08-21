@@ -1,10 +1,11 @@
+import argparse
 import subprocess
 import os
 import sys
 from setuptools import setup, find_packages
 from termcolor import cprint
 
-def version_record(flag:str, major_inc:int=0, minor_inc:int=0, patch_inc:int=1, update_msg:str='update version'):
+def version_record(flag:str, major_inc:bool=False, minor_inc:bool=False, patch_inc:bool=True, update_msg:str='update version'):
     cprint('version_record ...','yellow')
     ver_file_path = 'package_version.txt'
     if not os.path.exists(ver_file_path):
@@ -18,24 +19,25 @@ def version_record(flag:str, major_inc:int=0, minor_inc:int=0, patch_inc:int=1, 
             lines = [line.strip() for line in f.readlines()]
             f.close()
         print(lines)
-        return lines[-1]
+        return lines[-1].split(': ')[0]
     elif flag == 'write':
         cprint('updating version record ...','yellow')
         with open(ver_file_path, 'a+') as f:
             f.seek(0)
             lastest_version = f.readlines()[-1]
             lv_number_list = lastest_version.split(': ')[0].split('.')
-            if major_inc > 0:
-                lv_number_list[0] = str(int(lv_number_list[0]) + major_inc)
+            print(lv_number_list)
+            if major_inc:
+                lv_number_list[0] = str(int(lv_number_list[0]) + 1)
                 lv_number_list[1] = '0'
                 lv_number_list[2] = '0'
                 new_version = f'{".".join(lv_number_list)}: {update_msg}'
-            elif minor_inc > 0:
-                lv_number_list[1] = str(int(lv_number_list[1]) + minor_inc)
+            elif minor_inc :
+                lv_number_list[1] = str(int(lv_number_list[1]) + 1)
                 lv_number_list[2] = '0'
                 new_version = f'{".".join(lv_number_list)}: {update_msg}'
-            elif patch_inc > 0:
-                lv_number_list[2] = str(int(lv_number_list[2]) + patch_inc)
+            elif patch_inc:
+                lv_number_list[2] = str(int(lv_number_list[2]) + 1)
                 new_version = f'{".".join(lv_number_list)}: {update_msg}'
             else:
                 print('no version increment is parsed ...')
@@ -67,7 +69,7 @@ if __name__ == "__main__":
     subprocess.run(args=["rm", "-rf", "dist"])
     setup(
         name                ='dh_backtest',
-        version             =version_record('write'),
-        packages            =find_packages(),
+        version             =version_record('read'),
+        packages            =find_packages(include=['dh_backtest', 'dh_backtest.*']),
         install_requires    =get_package_requirements(),
     )
