@@ -37,7 +37,9 @@ if __name__ == "__main__":
     elif args.publish:
         version_record('upload')
         subprocess.run(args=["twine", "upload", "-u", TWINE_USERNAME, "-p", TWINE_PASSWORD, "dist/*"])
-        subprocess.run(args=["rm", "-rf", "build", "dist", "dh_backtest.egg-info", "__pycache__"])
+        subprocess.run(args=["rm", "-rf", "build", "dist", "dh_backtest.egg-info"])
+        subprocess.run(args=["find", ".", "-type", "d", "-name", "__pycache__", "-exec", "rm", "-rf", "{}", "+"])
 
     else:
         print("An execution command is needed. Use --help for more information.")
+    
