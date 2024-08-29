@@ -35,7 +35,7 @@ class BacktestEngine():
         self.is_update_data     = is_update_data
         self.is_rerun_backtest  = is_rerun_backtest
         self.folder_path        = folder_path
-        self.file_name          = f'{underlying.symbol}_{underlying.start_date}_{underlying.end_date}_{underlying.barSizeSetting}'.replace(' ', '_').replace(' ', '')   
+        self.file_name          = f'{underlying.symbol}_{underlying.start_date}_{underlying.end_date}_{underlying.barSizeSetting}'.replace('-', '').replace(' ', '')   
         self.underlying         = underlying
         self.para_dict          = para_dict
         self.trade_account      = trade_account

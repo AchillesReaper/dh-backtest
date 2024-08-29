@@ -9,9 +9,12 @@ from dateutil.relativedelta import relativedelta
 import arrow
 import pytz
 
-from .data_classes import IBBarSize, Underlying
-from ib_insync import IB, Contract
 import pandas as pd
+from ib_insync import IB, Contract
+from futu import OpenQuoteContext, KLType, AuType, KL_FIELD, RET_OK
+# local imports
+# from data_classes import IBBarSize, Underlying
+from .data_classes import IBBarSize, Underlying
 
 ##### ***** commom functions ***** #####
 def get_month_list(start_date: str, end_date: str):
@@ -45,10 +48,13 @@ def combine_spot_iter_data(iter_df_list):
             df = df._append(iter_df_list[i])
     return df
 
-##### ***** futu ***** #####
 
 ##### ***** IB ***** #####
 def get_spot_iter_from_ib(underlying:Underlying, contract_month:str) -> pd.DataFrame:
+    '''
+    This function gets the spot contract trading data from IB API, with (host='127.0.0.1', port=4002, clientId=1)
+    return dataframe with columns: ["datetime", "timestamp", "open", "high", "low", "close", "volume", "barCount", "average", "expiry", "trade_date"]
+    '''
     # get the spot contract trading data from IB API, return df 
     ib = IB()
     ib.connect("127.0.0.1", 4002, clientId=1)
@@ -167,6 +173,9 @@ def get_spot_iter_from_ib(underlying:Underlying, contract_month:str) -> pd.DataF
     return iter_df
 
 def get_spot_future_ib(underlying:Underlying) -> pd.DataFrame:
+    '''
+    return df: index="timestamp", columns=["datetime", , "open", "high", "low", "close", "volume", "barCount", "average", "expiry", "trade_date"]
+    '''
     # get the spot contract trading data from IB API, return df 
     month_list = get_month_list(underlying.start_date, underlying.end_date)
     iter_df_list = []
@@ -178,13 +187,38 @@ def get_spot_future_ib(underlying:Underlying) -> pd.DataFrame:
 
 
 
+##### ***** futu ***** #####
+def get_stock_futu(underlying:Underlying) -> pd.DataFrame:
+    '''
+    This function gets the spot contract trading data from futu-api, with (host='127.0.0.1', port=11111)
+    return dataframe with columns: ["datetime", "timestamp", "open", "high", "low", "close", "volume", "barCount", "average", "expiry", "trade_date"]
+    '''
+
+    futu_client = OpenQuoteContext(host='127.0.0.1', port=11111)
+    ret, data, page_req_key = futu_client.request_history_kline(
+        code        = underlying.symbol,
+        start       = underlying.start_date,
+        end         = underlying.end_date,
+        ktype       = underlying.barSizeSetting,
+        autype      = AuType.QFQ, 
+        fields      = [KL_FIELD.DATE_TIME, KL_FIELD.OPEN, KL_FIELD.HIGH, KL_FIELD.LOW, KL_FIELD.CLOSE], 
+        max_count   =1000, 
+        page_req_key=None, 
+        extended_time=True
+    )
+    return data
+
+
+
+
+
 # test the functions
 if __name__ == "__main__":
     underlying = Underlying(
-        symbol          = "HSI",
+        symbol          = "HK.00388",
         exchange        = "HKFE",
         contract_type   = "FUT",
-        barSizeSetting  = IBBarSize.DAY_1,
+        barSizeSetting  = KLType.K_30M,
         start_date      = "2023-01-01",
         end_date        = "2023-07-31",
         durationStr     = "2 M",
@@ -192,6 +226,6 @@ if __name__ == "__main__":
         timeZone        = "Asia/Hong_Kong",
     )
 
-    
-    spot_df = get_spot_future_ib(underlying)
-    print(spot_df)
+    df_stock = get_stock_futu(underlying)
+    print(df_stock)
+
