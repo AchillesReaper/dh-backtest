@@ -149,7 +149,7 @@ class BacktestEngine():
         '''
         cprint(f"Running backtest for {ref_tag}", 'green')
         trading_account = self.trade_account
-        df_signal = self.generate_signal(df_hist_data, para_comb)
+        df_signal = self.generate_signal(df_hist_data, para_comb, self.underlying)
         df_testing = self.init_trading(df_signal)
         df_backtest_result = self.action_on_signal(df_testing, para_comb, trading_account)
         df_backtest_result.attrs = {
