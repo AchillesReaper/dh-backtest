@@ -34,3 +34,5 @@
 0.1.3: update version -> uploaded
 0.1.4: add extra agr to generate_signal()
 0.1.4: add extra agr to generate_signal() -> uploaded
+0.1.5: add OCO attribute to FutureTradingAccount
+0.1.5: add OCO attribute to FutureTradingAccount -> uploaded
