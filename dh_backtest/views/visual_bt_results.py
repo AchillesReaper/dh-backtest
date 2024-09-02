@@ -428,7 +428,7 @@ def plot_app(df_list: List[pd.DataFrame]):
 
         return figure, style_data_conditional, [table1, table2], para_table
 
-    app.run(debug=False)
+    app.run(debug=True)
 
 
 

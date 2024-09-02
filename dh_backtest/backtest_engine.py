@@ -1,3 +1,4 @@
+import copy
 from datetime import datetime
 import itertools
 import multiprocessing
@@ -31,6 +32,7 @@ class BacktestEngine():
             action_on_signal:Callable, 
             get_data_from_api:Callable,
             folder_path:str = 'data/stg_1',
+            plot_app:Callable = plot_app,
         ) -> None:
         self.is_update_data     = is_update_data
         self.is_rerun_backtest  = is_rerun_backtest
@@ -42,6 +44,7 @@ class BacktestEngine():
         self.generate_signal    = generate_signal
         self.action_on_signal   = action_on_signal
         self.get_from_api       = get_data_from_api
+        self.plot_app           = plot_app
         pass
 
     def get_hist_data(self) -> pd.DataFrame:
@@ -148,8 +151,10 @@ class BacktestEngine():
             }
         '''
         cprint(f"Running backtest for {ref_tag}", 'green')
-        trading_account = self.trade_account
-        df_signal = self.generate_signal(df_hist_data, para_comb, self.underlying)
+        trading_account = copy.deepcopy(self.trade_account)
+        df_hist_data_copy = df_hist_data.copy()
+        underlying_copy = copy.deepcopy(self.underlying)
+        df_signal = self.generate_signal(df_hist_data_copy, para_comb, underlying_copy)
         df_testing = self.init_trading(df_signal)
         df_backtest_result = self.action_on_signal(df_testing, para_comb, trading_account)
         df_backtest_result.attrs = {
@@ -244,6 +249,6 @@ class BacktestEngine():
 
         # visualize the backtest results
         cprint('plotting the backtest results......', 'green')
-        plot_app(backtest_results)
+        self.plot_app(backtest_results)
 
 

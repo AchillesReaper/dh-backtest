@@ -36,3 +36,8 @@
 0.1.4: add extra agr to generate_signal() -> uploaded
 0.1.5: add OCO attribute to FutureTradingAccount
 0.1.5: add OCO attribute to FutureTradingAccount -> uploaded
+0.1.6: OCO init amount
+0.1.6: OCO init amount -> uploaded
+0.1.7: OCO removed, enable custom plot function
+0.1.7: OCO removed, enable custom plot function -> uploaded
+0.1.8: debug, isolating value/ref to run bt
