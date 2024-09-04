@@ -23,16 +23,16 @@ pd.set_option('display.width', None)
 class BacktestEngine():
     def __init__(
             self, 
-            is_update_data:bool, 
-            is_rerun_backtest:bool, 
-            underlying:Underlying, 
-            para_dict:dict,
-            trade_account:FutureTradingAccount,
-            generate_signal:Callable, 
-            action_on_signal:Callable, 
-            get_data_from_api:Callable,
-            folder_path:str = 'data/stg_1',
-            plot_app:Callable = plot_app,
+            is_update_data      :bool, 
+            is_rerun_backtest   :bool, 
+            underlying          :Underlying, 
+            para_dict           :dict,
+            trade_account       :FutureTradingAccount,
+            generate_signal     :Callable, 
+            action_on_signal    :Callable, 
+            get_data_from_api   : Callable,
+            folder_path :str = 'data/stg_1',
+            plot_app    :Callable = plot_app,
         ) -> None:
         self.is_update_data     = is_update_data
         self.is_rerun_backtest  = is_rerun_backtest
@@ -94,7 +94,7 @@ class BacktestEngine():
 
         df = pd.DataFrame(para_list, columns=para_keys)
 
-        ref_tag = [f'{self.file_name}_bt_{i+1:08d}' for i in df.index]
+        ref_tag = [f'{self.file_name}_bt_{i+1:03d}' for i in df.index]
         df['ref_tag'] = ref_tag
         df.set_index('ref_tag', inplace=True)
         para_comb_dict = df.to_dict(orient='index')

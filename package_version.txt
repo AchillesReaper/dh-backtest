@@ -41,3 +41,7 @@
 0.1.7: OCO removed, enable custom plot function
 0.1.7: OCO removed, enable custom plot function -> uploaded
 0.1.8: debug, isolating value/ref to run bt
+0.1.9: reduce ref_tag to 3 digits
+0.1.10: review view_bt_result
+0.1.11: review view_bt_result
+0.1.11: review view_bt_result -> uploaded
