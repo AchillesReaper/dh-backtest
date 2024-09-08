@@ -182,7 +182,21 @@ class BacktestEngine():
     def generate_bt_report(self, df_bt_result:pd.DataFrame, risk_free_rate:float=0.02) -> dict:
         # performance metrics
         number_of_trades = df_bt_result[df_bt_result['action']=='close'].shape[0]
-        win_rate = df_bt_result[df_bt_result['pnl_action'] > 0].shape[0] / df_bt_result[df_bt_result['action']=='close'].shape[0]
+        if number_of_trades == 0:
+            return {
+                'number_of_trades':     0,
+                'win_rate':             0,
+                'total_cost':           0,
+                'pnl_trading':          0,
+                'roi_trading':          0,
+                'mdd_pct_trading':      0,
+                'mdd_dollar_trading':   0,
+                'pnl_bah':              0,
+                'roi_bah':              0,
+                'mdd_pct_bah':          0,
+                'mdd_dollar_bah':       0,
+            }
+        win_rate = df_bt_result[df_bt_result['pnl_action'] > 0].shape[0] / number_of_trades
         total_cost = df_bt_result['commission'].sum()
         # MDD
         df_bt_result['cum_max_nav']     = df_bt_result['nav'].cummax()
@@ -204,8 +218,6 @@ class BacktestEngine():
 
         pnl_bah     = df_bt_result['close'].iloc[-1] - df_bt_result['close'].iloc[0]
         roi_bah     = pnl_bah / df_bt_result['close'].iloc[0]
-
-        # win rate
 
         performance_report = {
             'number_of_trades'      : int(number_of_trades),

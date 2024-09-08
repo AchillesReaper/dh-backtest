@@ -188,7 +188,7 @@ def get_spot_future_ib(underlying:Underlying) -> pd.DataFrame:
 
 
 ##### ***** futu ***** #####
-def get_stock_futu(underlying:Underlying) -> pd.DataFrame:
+def get_stock_futu_api(underlying:Underlying) -> pd.DataFrame:
     '''
     This function gets the spot contract trading data from futu-api, with (host='127.0.0.1', port=11111)
     return dataframe with columns: ["datetime", "timestamp", "open", "high", "low", "close", "volume", "barCount", "average", "expiry", "trade_date"]
@@ -206,6 +206,7 @@ def get_stock_futu(underlying:Underlying) -> pd.DataFrame:
         page_req_key=None, 
         extended_time=True
     )
+    futu_client.close()
     return data
 
 
@@ -226,6 +227,6 @@ if __name__ == "__main__":
         timeZone        = "Asia/Hong_Kong",
     )
 
-    df_stock = get_stock_futu(underlying)
+    df_stock = get_stock_futu_api(underlying)
     print(df_stock)
 
