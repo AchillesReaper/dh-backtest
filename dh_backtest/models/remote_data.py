@@ -193,18 +193,17 @@ def get_stock_futu_api(underlying:Underlying) -> pd.DataFrame:
     This function gets the spot contract trading data from futu-api, with (host='127.0.0.1', port=11111)
     return dataframe with columns: ["datetime", "timestamp", "open", "high", "low", "close", "volume", "barCount", "average", "expiry", "trade_date"]
     '''
-
     futu_client = OpenQuoteContext(host='127.0.0.1', port=11111)
     ret, data, page_req_key = futu_client.request_history_kline(
-        code        = underlying.symbol,
-        start       = underlying.start_date,
-        end         = underlying.end_date,
-        ktype       = underlying.barSizeSetting,
-        autype      = AuType.QFQ, 
-        fields      = [KL_FIELD.DATE_TIME, KL_FIELD.OPEN, KL_FIELD.HIGH, KL_FIELD.LOW, KL_FIELD.CLOSE], 
-        max_count   =1000, 
-        page_req_key=None, 
-        extended_time=True
+        code            = underlying.symbol,
+        start           = underlying.start_date,
+        end             = underlying.end_date,
+        ktype           = underlying.barSizeSetting,
+        autype          = AuType.QFQ, 
+        fields      = [KL_FIELD.ALL],
+        max_count       = 1000000, 
+        page_req_key    = None, 
+        extended_time   = True
     )
     futu_client.close()
     return data
@@ -219,14 +218,17 @@ if __name__ == "__main__":
         symbol          = "HK.00388",
         exchange        = "HKFE",
         contract_type   = "FUT",
-        barSizeSetting  = KLType.K_30M,
-        start_date      = "2023-01-01",
-        end_date        = "2023-07-31",
+        barSizeSetting  = KLType.K_5M,
+        start_date      = "2024-08-01",
+        end_date        = "2024-08-30",
         durationStr     = "2 M",
         rolling_days    = 4,
         timeZone        = "Asia/Hong_Kong",
     )
 
     df_stock = get_stock_futu_api(underlying)
-    print(df_stock)
+    datetime = df_stock.at[0, 'time_key']
+    print(df_stock.head(20))
+    print(datetime)
+    print(type(datetime))
 

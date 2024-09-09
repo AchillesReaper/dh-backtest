@@ -3,7 +3,7 @@ import sys
 from termcolor import cprint
 
 class Underlying():
-    def __init__(self, symbol:str, exchange:str, contract_type:str, barSizeSetting:str,start_date:str, end_date:str,  durationStr='2 M', rolling_days:int=4, timeZone:str="Asia/Hong_Kong"):
+    def __init__(self, symbol:str, barSizeSetting:str,start_date:str, end_date:str, exchange:str='HKFE', contract_type:str='FUT',  durationStr='2 M', rolling_days:int=4, timeZone:str="Asia/Hong_Kong"):
         self.symbol             = symbol
         self.exchange           = exchange
         self.contract_type      = contract_type
