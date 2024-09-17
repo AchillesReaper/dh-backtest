@@ -1,52 +1,47 @@
 style_root_div = {
     'backgroundColor': '#D0B8A8', 
     'width': '100%', 
+    'height': '100vh',
     'display': 'flex', 
-    'flex-direction': 'column', 
-    'justify-content': 'space-between', 
-    # 'border': '1px solid red', 
+    'flexDirection': 'column', 
 }
 
 style_header = {
     'backgroundColor': '#D0B8A8', 
-    'height': '60px',
     'width': '100%',
-    'max-height': '10vh',
-    'justify-content': 'center', 
+    'maxHeight': '10vh',
+    'display': 'flex', 
+    'justifyContent': 'center', 
     'fontSize': 30, 
     'fontfamily': 'Arial', 
     'margin': 'auto', 
-    'padding': '10px',
-    # 'border': '1px solid blue', 
 }
 
 style_body = {
     'backgroundColor': '#DFD3C3', 
-    'height': '90vh',
-    'min-height': '800px',
+    'height': '90%',
+    'minHeight': '800px',
     'width': '100%', 
-    # 'border': '1px solid blue', 
     'display': 'flex', 
-    'justify-content': 'space-around'
+    'justifyContent': 'space-around'
 }
 
 style_body_sub_div = {
     'backgroundColor': '#F8EDE3', 
     'display': 'inline-block', 
-    'height': '80vh',
-    'width': '35%', 
-    'border-radius': '10px',
-    'margin-top': '10px',
-    'margin-left': 'auto', 
-    'margin-right': 'auto',
-    # 'overflow-x': 'hidden',
-    # 'overflow-y': 'scroll',
-
+    'minHeight': '780px',
+    'height': '95%',
+    'borderRadius': '10px',
+    'marginTop': '10px',
+    'marginLeft': 'auto', 
+    'marginRight': 'auto',
 }
 
 style_element = {
-    'border-radius': '5px',
-    'padding': '10px',
-    'width': '100%',
-    'margin-top': '10px',
+    'borderRadius': '5px',
+    # 'padding': '10px',
+    'width': '95%',
+    'marginTop': '10px',
+    'marginLeft': 'auto', 
+    'marginRight': 'auto',
 }

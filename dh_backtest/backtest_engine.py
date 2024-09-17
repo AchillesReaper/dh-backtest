@@ -10,10 +10,10 @@ import pandas as pd
 # local modules
 # from models.local_data import read_csv_with_metadata, to_csv_with_metadata
 # from models.data_classes import FutureTradingAccount, Underlying
-# from views.visual_bt_results import plot_app
+# from views.view_bt_result import plot_bt_result
 from dh_backtest.models.local_data import read_csv_with_metadata, to_csv_with_metadata
 from dh_backtest.models.data_classes import FutureTradingAccount, Underlying
-from dh_backtest.views.visual_bt_results import plot_app
+from dh_backtest.views.view_bt_result import plot_bt_result
 
 
 pd.set_option('display.max_columns', None)
@@ -23,16 +23,16 @@ pd.set_option('display.width', None)
 class BacktestEngine():
     def __init__(
             self, 
-            is_update_data      :bool, 
-            is_rerun_backtest   :bool, 
-            underlying          :Underlying, 
-            para_dict           :dict,
-            trade_account       :FutureTradingAccount,
-            generate_signal     :Callable, 
-            action_on_signal    :Callable, 
+            is_update_data      : bool, 
+            is_rerun_backtest   : bool, 
+            underlying          : Underlying, 
+            para_dict           : dict,
+            trade_account       : FutureTradingAccount,
+            generate_signal     : Callable, 
+            action_on_signal    : Callable, 
             get_data_from_api   : Callable,
-            folder_path :str = 'data/stg_1',
-            plot_app    :Callable = plot_app,
+            folder_path         :str = 'data/stg_1',
+            plot_result_app     :Callable = plot_bt_result,
         ) -> None:
         self.is_update_data     = is_update_data
         self.is_rerun_backtest  = is_rerun_backtest
@@ -44,8 +44,8 @@ class BacktestEngine():
         self.generate_signal    = generate_signal
         self.action_on_signal   = action_on_signal
         self.get_from_api       = get_data_from_api
-        self.plot_app           = plot_app
-        pass
+        self.plot_result_app    = plot_result_app
+
 
     def get_hist_data(self) -> pd.DataFrame:
         '''
@@ -235,9 +235,9 @@ class BacktestEngine():
         return performance_report
 
 
-    def run_engine(self):
+    def simulate_trading(self) -> List[pd.DataFrame]:
         '''
-        This is the main controller to run the backtest.
+        This is the main controller to run the backtests.
         '''
         if datetime.strptime(self.underlying.end_date, "%Y-%m-%d") > datetime.today():
             cprint("Error: End date is in the future!", 'red')
@@ -259,8 +259,17 @@ class BacktestEngine():
         else:
             backtest_results = self.read_backtest_result()
 
+        return backtest_results
         # visualize the backtest results
+        # cprint('plotting the backtest results......', 'green')
+        # self.plot_bt_result(backtest_results)
+
+
+    def plot_bt_results(self, backtest_results:List[pd.DataFrame]) -> None:
+        '''
+        This is a function to plot the backtest results.
+        '''
         cprint('plotting the backtest results......', 'green')
-        self.plot_app(backtest_results)
+        self.plot_result_app(backtest_results)
 
 

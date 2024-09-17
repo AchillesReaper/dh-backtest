@@ -1,1 +1,1 @@
-from .visual_bt_results import plot_app
+from .view_bt_result import plot_bt_result

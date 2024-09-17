@@ -1,3 +1,5 @@
+import ast
+import sys
 from typing import List
 import pandas as pd
 import dash
@@ -8,8 +10,157 @@ from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from termcolor import cprint
 # local modules
-# from views.css import style_root_div, style_header, style_body, style_body_sub_div, style_element
+# from css import style_root_div, style_header, style_body, style_body_sub_div, style_element
 from dh_backtest.views.css import style_root_div, style_header, style_body, style_body_sub_div, style_element
+
+def color_tag(price:int, val:int, vah:int, spkl:int, spkh:int, pocs:List[int]) -> str:
+    if price in pocs:
+        return 'red'
+    elif (price >= val and price <= vah):
+        return 'green'
+    elif (price <= spkl or price >= spkh):
+        return 'yellow' 
+    else:
+        return 'blue'
+
+  
+def plot_daily_detail(df_bt_result_td:pd.DataFrame):
+    # construct a df_tpo [price, count, color]
+    tpo_count = df_bt_result_td['tpo_count'].iloc[0]
+    if isinstance(tpo_count, str): tpo_count = ast.literal_eval(tpo_count)
+
+    poc_list = df_bt_result_td['pocs'].iloc[0]
+    if isinstance(poc_list, str): poc_list = ast.literal_eval(poc_list)
+
+    df_tpo = pd.DataFrame(tpo_count.items(), columns=['price', 'count'])
+    val = df_bt_result_td['val'].iloc[0]
+    vah = df_bt_result_td['vah'].iloc[0]
+    spkl = df_bt_result_td['spkl'].iloc[0]
+    spkh = df_bt_result_td['spkh'].iloc[0]
+    df_tpo['color'] = df_tpo['price'].apply(lambda x: color_tag(x, val, vah, spkl, spkh, poc_list))
+
+    fig = make_subplots(
+        rows=1, cols=2,
+        column_widths=[0.3, 0.6],
+        shared_yaxes=True,
+        horizontal_spacing=0.05,
+    )
+    # market profile of the previous trade date
+    fig.add_trace(
+        go.Bar(
+            x            = df_tpo['count'],
+            y            = df_tpo['price'],
+            name         = 'TPO',
+            orientation  = 'h',
+            marker_color = df_tpo['color'],
+            text         = 'Price:' + df_tpo['price'].astype(str) + ', ' + 'TPO: ' + df_tpo['count'].astype(str),
+            textposition = 'none',
+            hoverinfo    = 'text',
+        ),
+        row=1, col=1,
+    )
+    # price movement in the trade date
+    fig.add_trace(
+        go.Candlestick(
+            x     = df_bt_result_td['datetime'],
+            open  = df_bt_result_td['open'],
+            high  = df_bt_result_td['high'],
+            low   = df_bt_result_td['low'],
+            close = df_bt_result_td['close'],
+            name  = 'candlestick',
+        ),
+        row=1, col=2,
+    )
+    # actions - buy
+    action_buy_df = df_bt_result_td[df_bt_result_td['action'] == 'buy']
+    fig.add_trace(
+        go.Scatter(
+            x       =action_buy_df['datetime'],
+            y       =action_buy_df['t_price'],
+            mode    ='markers',
+            marker  =dict(
+                symbol  ='triangle-up-open',
+                size    =10,
+                color   ='brown',
+            ),
+            name='Buy',
+            text='Open: ' 
+                + action_buy_df['t_size'].astype(str) + '@' + action_buy_df['t_price'].astype(str) 
+                + ' (signal: ' + action_buy_df['signal'] + ')',
+            hoverinfo='text',
+            customdata = [df_bt_result_td.attrs['ref_tag']] * len(df_bt_result_td),
+        ),
+        row=1, col=2,
+    )
+    # actions - sell
+    action_sell_df = df_bt_result_td[df_bt_result_td['action'] == 'sell']
+    fig.add_trace(
+        go.Scatter(
+            x       =action_sell_df['datetime'],
+            y       =action_sell_df['t_price'],
+            mode    ='markers',
+            marker  =dict(
+                symbol='triangle-down-open',
+                size=10,
+                color='brown',
+            ),
+            name='Sell',
+            text='Open: ' 
+                + action_sell_df['t_size'].astype(str) + '@' + action_sell_df['t_price'].astype(str) 
+                + ' (signal: ' + action_sell_df['signal'] + ')',
+            hoverinfo='text',
+            customdata = [df_bt_result_td.attrs['ref_tag']] * len(df_bt_result_td),
+        ),
+        row=1, col=2,
+    )
+    #actions - close
+    action_close_df = df_bt_result_td[df_bt_result_td['action'] == 'close']
+    fig.add_trace(
+        go.Scatter(
+            x=action_close_df['datetime'],
+            y=action_close_df['t_price'],
+            mode='markers',
+            marker=dict(
+                symbol='circle-open',
+                size=10,
+                color='blue',
+            ),
+            name='Close',
+            text='Close: ' 
+                + action_close_df['t_size'].astype(str) + '@' + action_close_df['t_price'].astype(str) 
+                + ' (' + action_close_df['logic'] + ', P/L: ' + action_close_df['pnl_action'].astype(str) + ')',
+            hoverinfo='text',
+            customdata = [df_bt_result_td.attrs['ref_tag']] * len(df_bt_result_td),
+        ),
+        row=1, col=2,
+    )
+    fig.update_layout(
+        height=None,
+        showlegend=False,
+        hovermode='closest',
+        paper_bgcolor='#F8EDE3',
+        xaxis=dict(
+            tickmode='linear',
+            nticks=len(df_tpo['count']),
+            showspikes=True, spikemode='across', spikesnap='cursor', showline=True
+        ),
+        xaxis2=dict(
+            rangeslider=dict(visible=False),
+            showspikes=True, spikemode='across', spikesnap='cursor', showline=True
+        ),
+        yaxis=dict(
+            side='right',
+            tickformat=',',
+            showgrid=True,
+            showspikes=True, spikemode='across', spikesnap='cursor', showline=True
+        ),
+        yaxis2=dict(
+            side='left',
+            tickformat=',',
+            showspikes=True, spikemode='across', spikesnap='cursor', showline=True
+        ),
+    )
+    return fig
 
 
 def plot_curve_detail(df_bt_result:pd.DataFrame):
@@ -103,15 +254,22 @@ def plot_curve_detail(df_bt_result:pd.DataFrame):
     )
 
     fig.update_layout(
-        height=800,
-        yaxis=dict(tickformat=',', autorange=True),
+        title= df_bt_result.attrs["ref_tag"],
+        xaxis=dict(
+            showticklabels=True, autorange=True, type='date',
+            showspikes=True, spikemode='across', spikesnap='cursor', showline=True
+        ),
+        yaxis=dict(
+            tickformat=',', autorange=True,
+            showspikes=True, spikemode='across', spikesnap='cursor', showline=True
+        ),
         yaxis2=dict(tickformat=',', autorange=True),
-        xaxis=dict(showticklabels=True, autorange=True, type='date'),
         autosize=True,
+        xaxis_rangeslider_visible=False,
+        height=None,
         hovermode='closest',
         hoverlabel=dict(bgcolor='#af9b46', font_size=16, font_family='Rockwell',),
         paper_bgcolor='#F8EDE3',
-        xaxis_rangeslider_visible=False,
     )
 
     return fig
@@ -142,6 +300,11 @@ def plot_all_curves(df_bt_result_list: List[pd.DataFrame]):
         ))
 
     fig.update_layout(
+        title={
+            'text': 'Equity Curves',
+            'xanchor': 'center',
+            'yanchor': 'top',
+        },
         height=800,
         showlegend=False,
         hovermode='closest',
@@ -161,8 +324,32 @@ def plot_all_curves(df_bt_result_list: List[pd.DataFrame]):
     return fig
 
 
-def plot_app(df_bt_result_list: List[pd.DataFrame]):
-
+def plot_bt_result_mp(df_bt_result_list: List[pd.DataFrame]):
+    '''
+    args: a list of backtest reult dataframes
+    each dataframe shall contain columns: [
+        'datetime','open','high','low','close','volume',
+        'trade_date',
+        'signal','action','logic','t_size','t_price','commission','pnl_action','nav'
+    ]
+    each dataframe shall have the following attributes:{
+                "ref_tag": string, 
+                "para_comb": Dict, 
+                "performace_report": {
+                    "number_of_trades":     int, 
+                    "win_rate":             float, 
+                    "total_cost":           float, 
+                    "pnl_trading":          float, 
+                    "roi_trading":          float, 
+                    "mdd_pct_trading":      float, 
+                    "mdd_dollar_trading":   float, 
+                    "pnl_bah":              float, 
+                    "roi_bah":              float, 
+                    "mdd_pct_bah":          float, 
+                    "mdd_dollar_bah":       float
+                }
+            }
+    '''
     df_performance_columns = ['ref_tag'] + list(df_bt_result_list[0].attrs['performace_report'].keys())
     df_performance = pd.DataFrame(columns=df_performance_columns)
     df_para_columns = ['ref_tag'] + (list(df_bt_result_list[0].attrs['para_comb'].keys()))
@@ -214,6 +401,7 @@ def plot_app(df_bt_result_list: List[pd.DataFrame]):
                                 active_tab='strategy_detail',
                             ),
                             dcc.Graph(id='graph_curve_detail', figure={}, style=style_element),
+                            dcc.Graph(id='graph_daily_detail', figure={}, style={**style_element, 'display': 'none'}),
                             dcc.Graph(id='grapph_all_curves', figure=plot_all_curves(df_bt_result_list), style=style_element),
                         ]
                     ),
@@ -293,7 +481,8 @@ def plot_app(df_bt_result_list: List[pd.DataFrame]):
 
     @app.callback(
         [
-            Output('graph_curve_detail', 'style'), 
+            Output('graph_curve_detail', 'style'),
+            Output('graph_daily_detail', 'style'),
             Output('grapph_all_curves', 'style')
         ],
         Input('graph_tab', 'active_tab')
@@ -301,17 +490,21 @@ def plot_app(df_bt_result_list: List[pd.DataFrame]):
     def switch_graph_tab(active_tab):
         match active_tab:
             case 'strategy_detail':
-                return style_element, {**style_element, 'display': 'none'}
+                return style_element, style_element, {**style_element, 'display': 'none'}
             case 'all_curves':
-                return {**style_element, 'display': 'none'}, style_element
+                return {**style_element, 'display': 'none'}, {**style_element, 'display': 'none'}, style_element
 
     # update state of current reference
     @app.callback(
         Output('current_ref', 'data'),
-        [Input('grapph_all_curves', 'clickData'), Input('bt_result_table', 'active_cell'),],
+        Input('grapph_all_curves', 'clickData'), 
+        Input('bt_result_table', 'active_cell'),
+        Input('bt_result_table', 'page_current'),
+        Input('bt_result_table', 'page_size'),
         State('bt_result_table', 'data')
     )
-    def update_current_ref(clickData, active_cell, tableData):
+    def update_current_ref(clickData, active_cell, page_current, page_size, tableData):
+        print(f'page_current: {page_current}, page_size: {page_size}')
         ctx = dash.callback_context
         if not ctx.triggered:
             raise PreventUpdate
@@ -325,7 +518,9 @@ def plot_app(df_bt_result_list: List[pd.DataFrame]):
             return ref_tag
         
         if trigger_id == 'bt_result_table' and active_cell:
-            ref_tag = tableData[active_cell['row']]['ref_tag']
+            page_current = 0 if page_current is None else page_current
+            row = active_cell['row'] + page_current * page_size
+            ref_tag = tableData[row]['ref_tag']
             cprint(f'current_ref: {ref_tag}', 'yellow')
             return ref_tag
 
@@ -341,13 +536,14 @@ def plot_app(df_bt_result_list: List[pd.DataFrame]):
         ],
         [
             Input('current_ref', 'data'),
+            Input('graph_curve_detail', 'relayoutData'),
         ],
         [
             State('grapph_all_curves', 'figure'),
         ],
         allow_duplicate=True
     )
-    def update_for_ceuurent_ref(current_ref, figure_all_curves):
+    def update_for_ceuurent_ref(current_ref, relayoutData, figure_all_curves):
         ctx = dash.callback_context
         if (not ctx.triggered) or (not current_ref): raise PreventUpdate
         
@@ -363,6 +559,17 @@ def plot_app(df_bt_result_list: List[pd.DataFrame]):
                     trace['line']['width'] = 1
                     trace['opacity'] = 0.5
             figure_curve_detail = plot_curve_detail(df_bt_result_dict[current_ref])
+        # If relayoutData exists, update the y-axis ranges
+        if relayoutData and 'xaxis.range[0]' in relayoutData and 'xaxis.range[1]' in relayoutData:
+            cprint(f'relayoutData: {relayoutData}', 'green')
+            x_min = relayoutData['xaxis.range[0]']
+            x_max = relayoutData['xaxis.range[1]']
+
+            # Filter data based on the selected x range
+            filtered_df = df_bt_result_dict[current_ref][['datetime', 'nav', 'open', 'low', 'high', 'close', 't_size', 't_price', 'signal', 'action', 'logic', 'pnl_action']]
+            filtered_df = filtered_df[(filtered_df['datetime'] >= x_min) & (filtered_df['datetime'] <= x_max)]
+            # Update y-axis ranges to fit the filtered data
+            figure_curve_detail = plot_curve_detail(filtered_df)
 
         style_data_conditional = [{
             'if': {'filter_query': f'{{ref_tag}} eq "{current_ref}"'},
@@ -407,10 +614,17 @@ def plot_app(df_bt_result_list: List[pd.DataFrame]):
             }
         )
         return figure_curve_detail, figure_all_curves, style_data_conditional, df_table_1.to_dict('records'), df_table_2.to_dict('records'), df_table_para.to_dict('records')
-
+    
+    # update the daily detail graph
+    @app.callback(
+        Output('graph_daily_detail', 'figure'),
+        Input('graph_curve_detail', 'clickData'),
+        State('current_ref', 'data'),
+    )
+    def update_daily_graph(clickData, current_ref):
+        if not clickData: raise PreventUpdate
+        trade_date = clickData['points'][0]['x'].split(' ')[0]
+        df_bt_result_td = df_bt_result_dict[current_ref][df_bt_result_dict[current_ref]['for_td'] == trade_date]
+        return plot_daily_detail(df_bt_result_td)
 
     app.run_server(debug=True, use_reloader=True)
-
-
-
-
