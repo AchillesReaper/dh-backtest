@@ -56,3 +56,5 @@
 0.1.16: updated Underlying debug -> uploaded
 0.1.17: update version
 0.1.17: update version -> uploaded
+0.1.18: update version
+0.1.19: add risk free rate

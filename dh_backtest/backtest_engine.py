@@ -7,6 +7,7 @@ import sys
 from typing import Callable, List
 from termcolor import cprint
 import pandas as pd
+import requests
 # local modules
 # from models.local_data import read_csv_with_metadata, to_csv_with_metadata
 # from models.data_classes import FutureTradingAccount, Underlying
@@ -19,6 +20,11 @@ from dh_backtest.views.view_bt_result import plot_bt_result
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.set_option('display.width', None)
+
+risk_free_rate_url = 'https://app-kw6fovhcnq-uc.a.run.app/getYieldCurveTB52'
+local_rf_folder_path = 'data/risk_free_rate'
+local_rf_daily_path = 'data/risk_free_rate/tb_52w_rate_daily.csv'
+local_rf_monthly_path = 'data/risk_free_rate/tb_52w_rate_monthly.csv'
 
 class BacktestEngine():
     def __init__(
@@ -40,10 +46,10 @@ class BacktestEngine():
         self.file_name          = f'{underlying.symbol}_{underlying.start_date}_{underlying.end_date}_{underlying.barSizeSetting}'.replace('-', '').replace(' ', '')   
         self.underlying         = underlying
         self.para_dict          = para_dict
+        self.get_from_api       = get_data_from_api
         self.trade_account      = trade_account
         self.generate_signal    = generate_signal
         self.action_on_signal   = action_on_signal
-        self.get_from_api       = get_data_from_api
         self.plot_result_app    = plot_result_app
 
 
@@ -122,62 +128,47 @@ class BacktestEngine():
         return df_testing
 
 
-    def run_backtest(self, df_hist_data:pd.DataFrame, ref_tag:str, para_comb:dict,) -> pd.DataFrame:
+    def update_risk_free_rate(self) -> pd.DataFrame:
+        try:
+            rate_data = requests.get(risk_free_rate_url).json()
+            df = pd.DataFrame(data=rate_data.values(), index=rate_data.keys())
+            df.index.name = 'date'
+            df.to_csv(local_rf_daily_path, index=True)
+
+            grouped = df.groupby('month')
+            df_tb_52w = grouped['bank_discount'].mean().reset_index()
+            df_tb_52w.columns = ['month', 'tb_52w_rate']
+            df_tb_52w.to_csv(local_rf_monthly_path, index=False)
+            return df_tb_52w
+        except Exception as e:
+            cprint("Error: failed to get the risk free rate!", 'red')
+            print(e)
+            sys.exit()
+
+
+    def get_risk_free_rate(self) -> dict:
         '''
-        This is a function to run backtest on the strategy.
-        Return a pandas dataframe with 
-            index: timestamp
-            columns: ['timestamp', 'datetime', 'open', 'high', 'low', 'close', 'volume', 'rolling_gain', 'calculation_col_1', 'calculation_col_2', 'signal', 'action', 'logic', 't_price', 't_size', 'commission', 'pnl_action', 'acc_columns'].
-            metadata: {
-                'ref_tag':      ref_tag,
-                'para_comb':    para_comb,
-                'performace_report': {
-                    'number_of_trades':     0,
-                    'win_rate':             0,
-                    'total_cost':           0,
-                    'pnl_trading':          0,
-                    'roi_trading':          0,
-                    'mdd_pct_trading':      0,
-                    'mdd_dollar_trading':   0,
-                    'pnl_bah':              0,
-                    'roi_bah':              0,
-                    'mdd_pct_bah':          0,
-                    'mdd_dollar_bah':       0,
-                },
-                benchmark:{
-                    'roi_sp500':            0,
-                    'roi_tbill_52w':        0,
-                }
-            }
+        This function will return a dictionary of the risk free rates for the period of the backtest period.
         '''
-        cprint(f"Running backtest for {ref_tag}", 'green')
-        trading_account = copy.deepcopy(self.trade_account)
-        df_hist_data_copy = df_hist_data.copy()
-        underlying_copy = copy.deepcopy(self.underlying)
-        df_signal = self.generate_signal(df_hist_data_copy, para_comb, underlying_copy)
-        df_testing = self.init_trading(df_signal)
-        df_backtest_result = self.action_on_signal(df_testing, para_comb, trading_account)
-        df_backtest_result.attrs = {
-            'ref_tag': ref_tag,
-            'para_comb': para_comb,
-            'performace_report': self.generate_bt_report(df_backtest_result),
-        }
-        bt_result_folder = os.path.join(self.folder_path, 'bt_results')
-        to_csv_with_metadata(df=df_backtest_result, file_name=ref_tag, folder=bt_result_folder)
-        return df_backtest_result
+        cprint('Getting the risk free rate dictionary......', 'yellow')
+        start_month = int(self.underlying.start_date[:7].replace('-', ''))
+        end_month = int(self.underlying.end_date[:7].replace('-', ''))
 
+        if (not os.path.exists(local_rf_folder_path)): os.makedirs(local_rf_folder_path)
+        # check if the monthly_mean_rate is already saved
+        if (os.path.exists(local_rf_monthly_path)):
+            df_tb_52w = pd.read_csv(local_rf_monthly_path)
+            # check if the local data is up to date, otherwise update the data
+            if (df_tb_52w['month'].max() < end_month):
+                df_tb_52w = self.update_risk_free_rate()
+        else:
+            df_tb_52w = self.update_risk_free_rate()
 
-    def read_backtest_result(self) -> List[pd.DataFrame]:
-        '''Read the backtest results from the the designated folder.'''
-        backtest_results = []
-        bt_result_path = os.path.join(self.folder_path, 'bt_results')
-        file_list = list(set(file_n.split('.')[0] for file_n in os.listdir(bt_result_path)))
-        for file in file_list:
-            if self.file_name in file:
-                cprint(f'Reading backtest result from: {file} ......', 'yellow')
-                backtest_results.append(read_csv_with_metadata(file, folder=bt_result_path))
-        return backtest_results
-
+        df_tb_52w_range = df_tb_52w[(df_tb_52w['month'] >= start_month) & (df_tb_52w['month'] <= end_month)]
+        df_tb_52w_range.set_index('month', inplace=True)
+        cprint(f"Risk free rate for the period: {start_month} to {end_month} is: \n{df_tb_52w_range.to_dict(orient='dict')['tb_52w_rate']}", 'green')
+        return df_tb_52w_range.to_dict(orient='dict')['tb_52w_rate']
+            
 
     def generate_bt_report(self, df_bt_result:pd.DataFrame, risk_free_rate:float=0.02) -> dict:
         # performance metrics
@@ -233,6 +224,63 @@ class BacktestEngine():
             'mdd_dollar_bah'        : float(mdd_dollar_bah),
         }
         return performance_report
+
+
+    def run_backtest(self, df_hist_data:pd.DataFrame, ref_tag:str, para_comb:dict,) -> pd.DataFrame:
+        '''
+        This is a function to run backtest on the strategy.
+        Return a pandas dataframe with 
+            index: timestamp
+            columns: ['timestamp', 'datetime', 'open', 'high', 'low', 'close', 'volume', 'rolling_gain', 'calculation_col_1', 'calculation_col_2', 'signal', 'action', 'logic', 't_price', 't_size', 'commission', 'pnl_action', 'acc_columns'].
+            metadata: {
+                'ref_tag':      ref_tag,
+                'para_comb':    para_comb,
+                'performace_report': {
+                    'number_of_trades':     0,
+                    'win_rate':             0,
+                    'total_cost':           0,
+                    'pnl_trading':          0,
+                    'roi_trading':          0,
+                    'mdd_pct_trading':      0,
+                    'mdd_dollar_trading':   0,
+                    'pnl_bah':              0,
+                    'roi_bah':              0,
+                    'mdd_pct_bah':          0,
+                    'mdd_dollar_bah':       0,
+                },
+                benchmark:{
+                    'roi_sp500':            0,
+                    'roi_tbill_52w':        0,
+                }
+            }
+        '''
+        cprint(f"Running backtest for {ref_tag}", 'green')
+        trading_account = copy.deepcopy(self.trade_account)
+        df_hist_data_copy = df_hist_data.copy()
+        underlying_copy = copy.deepcopy(self.underlying)
+        df_signal = self.generate_signal(df_hist_data_copy, para_comb, underlying_copy)
+        df_testing = self.init_trading(df_signal)
+        df_backtest_result = self.action_on_signal(df_testing, para_comb, trading_account)
+        df_backtest_result.attrs = {
+            'ref_tag': ref_tag,
+            'para_comb': para_comb,
+            'performace_report': self.generate_bt_report(df_backtest_result),
+        }
+        bt_result_folder = os.path.join(self.folder_path, 'bt_results')
+        to_csv_with_metadata(df=df_backtest_result, file_name=ref_tag, folder=bt_result_folder)
+        return df_backtest_result
+
+
+    def read_backtest_result(self) -> List[pd.DataFrame]:
+        '''Read the backtest results from the the designated folder.'''
+        backtest_results = []
+        bt_result_path = os.path.join(self.folder_path, 'bt_results')
+        file_list = list(set(file_n.split('.')[0] for file_n in os.listdir(bt_result_path)))
+        for file in file_list:
+            if self.file_name in file:
+                cprint(f'Reading backtest result from: {file} ......', 'yellow')
+                backtest_results.append(read_csv_with_metadata(file, folder=bt_result_path))
+        return backtest_results
 
 
     def simulate_trading(self) -> List[pd.DataFrame]:
