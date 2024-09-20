@@ -174,7 +174,7 @@ class BacktestEngine():
             risk_free_rate *= (1+rate/12/100)
         risk_free_rate = risk_free_rate**(1/(len(rf_rate_dict)/12)) - 1
         return risk_free_rate
-            
+
 
     def generate_bt_report(self, df_bt_result:pd.DataFrame, risk_free_rate:float=0.02) -> dict:
         # performance metrics

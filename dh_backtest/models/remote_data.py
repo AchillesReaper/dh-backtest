@@ -191,7 +191,7 @@ def get_spot_future_ib(underlying:Underlying) -> pd.DataFrame:
 def get_stock_futu_api(underlying:Underlying) -> pd.DataFrame:
     '''
     This function gets the spot contract trading data from futu-api, with (host='127.0.0.1', port=11111)
-    return dataframe with columns: ["datetime", "timestamp", "open", "high", "low", "close", "volume", "barCount", "average", "expiry", "trade_date"]
+    return dataframe with columns: ["code", "name", "time_key", "open", "close", "high", "low", "pe_ratio", "turnover_rate", "volume", "turnover", "change_rate"  "last_close"  "trade_date"]
     '''
     futu_client = OpenQuoteContext(host='127.0.0.1', port=11111)
     ret, data, page_req_key = futu_client.request_history_kline(
@@ -200,12 +200,30 @@ def get_stock_futu_api(underlying:Underlying) -> pd.DataFrame:
         end             = underlying.end_date,
         ktype           = underlying.barSizeSetting,
         autype          = AuType.QFQ, 
-        fields      = [KL_FIELD.ALL],
+        fields          = [KL_FIELD.ALL],
         max_count       = 1000000, 
         page_req_key    = None, 
         extended_time   = True
     )
     futu_client.close()
+    if ret != RET_OK:
+        cprint(f"Error: {data}", "red")
+        sys.exit()
+
+    # identify the trade_date for each row
+    data['dummy_col'] = data['time_key'].apply(lambda x: datetime.strptime(str(x), '%Y-%m-%d %H:%M:%S'))
+    data['real_td'] = data['time_key'].apply(lambda x: x[:10])
+    norm_td = []
+    for index, row in data.iterrows():
+        if row['dummy_col'].hour > 8:
+            norm_td.append(row['real_td'])
+        elif index == 0:
+            norm_td.append('NA')
+        else:
+            norm_td.append(norm_td[-1])
+    data['trade_date'] = norm_td
+    data = data.drop(columns=['dummy_col', 'real_td'])
+
     return data
 
 
