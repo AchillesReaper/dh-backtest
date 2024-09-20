@@ -146,7 +146,7 @@ class BacktestEngine():
             sys.exit()
 
 
-    def get_risk_free_rate(self) -> dict:
+    def get_risk_free_rate(self) -> float:
         '''
         This function will return a dictionary of the risk free rates for the period of the backtest period.
         '''
@@ -166,8 +166,14 @@ class BacktestEngine():
 
         df_tb_52w_range = df_tb_52w[(df_tb_52w['month'] >= start_month) & (df_tb_52w['month'] <= end_month)]
         df_tb_52w_range.set_index('month', inplace=True)
-        cprint(f"Risk free rate for the period: {start_month} to {end_month} is: \n{df_tb_52w_range.to_dict(orient='dict')['tb_52w_rate']}", 'green')
-        return df_tb_52w_range.to_dict(orient='dict')['tb_52w_rate']
+        rf_rate_dict = df_tb_52w_range.to_dict(orient='dict')['tb_52w_rate']
+        cprint(f"Risk free rate for the period: {start_month} to {end_month} is: \n{rf_rate_dict}", 'green')
+        # calculate the geometric mean of the risk free rate
+        risk_free_rate = 1
+        for rate in rf_rate_dict.values():
+            risk_free_rate *= (1+rate/12/100)
+        risk_free_rate = risk_free_rate**(1/(len(rf_rate_dict)/12)) - 1
+        return risk_free_rate
             
 
     def generate_bt_report(self, df_bt_result:pd.DataFrame, risk_free_rate:float=0.02) -> dict:
@@ -250,7 +256,7 @@ class BacktestEngine():
                 },
                 benchmark:{
                     'roi_sp500':            0,
-                    'roi_tbill_52w':        0,
+                    'tbill_52w':            0,
                 }
             }
         '''

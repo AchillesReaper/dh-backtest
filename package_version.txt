@@ -58,3 +58,4 @@
 0.1.17: update version -> uploaded
 0.1.18: update version
 0.1.19: add risk free rate
+0.1.20: calaculated the geometric mean of the risk free rate
